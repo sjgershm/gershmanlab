@@ -70,42 +70,45 @@ function results = dpkf(Y,opts)
     
     % run DPKF
     for t = 1:T
-
+        
         x = x*opts.W;           % predicted (a priori) estimate
         err = Y(t,:) - pZ*x;    % prediction error
         for k = 1:opts.Kmax
             P{k} = opts.W*P{k}*opts.W' + opts.Q;    % predicted (a priori) estimate covariance
         end
         
-        % compute posterior over modes
-        if t > 1 && opts.alpha > 0
+        if all(~isnan(err))
             
-            % Chinese restaurant prior
-            prior = M;
-            prior(find(prior==0,1)) = opts.alpha;   % probability of new mode
-            prior(k) = prior(k) + opts.sticky;      % make last mode sticky
-            prior = prior./sum(prior);
-            
-            % multivariate Gaussian likelihood
-            for k = 1:opts.Kmax
-                lik(k) = mvnpdf(Y(t,:),x(k,:),P{k}+opts.R);
+            % compute posterior over modes
+            if t > 1 && opts.alpha > 0
+                
+                % Chinese restaurant prior
+                prior = M;
+                prior(find(prior==0,1)) = opts.alpha;   % probability of new mode
+                prior(k) = prior(k) + opts.sticky;      % make last mode sticky
+                prior = prior./sum(prior);
+                
+                % multivariate Gaussian likelihood
+                for k = 1:opts.Kmax
+                    lik(k) = mvnpdf(Y(t,:),x(k,:),P{k}+opts.R);
+                end
+                
+                % posterior
+                pZ = prior.*lik;
+                pZ = pZ./sum(pZ);
+                
+                % MAP estimate
+                [~,k] = max(pZ);
+                M(k) = M(k) + 1;
             end
             
-            % posterior
-            pZ = prior.*lik;
-            pZ = pZ./sum(pZ);
-            
-            % MAP estimate
-            [~,k] = max(pZ);
-            M(k) = M(k) + 1;
-        end
-        
-        % update estimates
-        for k = 1:opts.Kmax
-            S{k} = (pZ(k)^2)*P{k} + opts.R;         % error covariance
-            G{k} = (P{k}*pZ(k))/S{k};               % Kalman gain
-            x(k,:) = x(k,:) + err*G{k};             % updated (a posteriori) estimate
-            P{k} = P{k} - pZ(k)*G{k}*P{k};          % updated (a posteriori) estimate covariance
+            % update estimates
+            for k = 1:opts.Kmax
+                S{k} = (pZ(k)^2)*P{k} + opts.R;         % error covariance
+                G{k} = (P{k}*pZ(k))/S{k};               % Kalman gain
+                x(k,:) = x(k,:) + err*G{k};             % updated (a posteriori) estimate
+                P{k} = P{k} - pZ(k)*G{k}*P{k};          % updated (a posteriori) estimate covariance
+            end
         end
         
         % store results
