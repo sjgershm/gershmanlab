@@ -72,7 +72,8 @@ function results = dpkf(Y,opts)
     for t = 1:T
         
         x = x*opts.W;           % predicted (a priori) estimate
-        err = Y(t,:) - pZ*x;    % prediction error
+        yhat = pZ*x;
+        err = Y(t,:) - yhat;    % prediction error
         for k = 1:opts.Kmax
             P{k} = opts.W*P{k}*opts.W' + opts.Q;    % predicted (a priori) estimate covariance
         end
@@ -85,7 +86,7 @@ function results = dpkf(Y,opts)
                 % Chinese restaurant prior
                 prior = M;
                 prior(find(prior==0,1)) = opts.alpha;   % probability of new mode
-                prior(k) = prior(k) + opts.sticky;      % make last mode sticky
+                prior(khat) = prior(khat) + opts.sticky;      % make last mode sticky
                 prior = prior./sum(prior);
                 
                 % multivariate Gaussian likelihood
@@ -98,8 +99,8 @@ function results = dpkf(Y,opts)
                 pZ = pZ./sum(pZ);
                 
                 % MAP estimate
-                [~,k] = max(pZ);
-                M(k) = M(k) + 1;
+                [~,khat] = max(pZ);
+                M(khat) = M(khat) + 1;
             end
             
             % update estimates
